@@ -78,8 +78,30 @@ module DataPath (
     assign imem_en= start ; // always available /// if their is address change
     assign imem_addr =  pc[INST_ADDR_WIDTH+1 : 2];  // 	•	PC[1:0] → byte offset (always 00) •	PC[2] → selects instruction 1
     assign instr = imem_data ; 
-  
-  
+  //-------------------------------------------------//
+  ///////////-----------IF-OF Pipeline---------------//
+ ////---------------------START----------------------//
+// register the PC/address used for fetch (1-cycle delay)
+logic [31:0] pc_fetch_q;
+
+always_ff @(posedge clk or negedge rst) begin
+  if (!rst) begin
+    pc_fetch_q <= '0;
+    IF_ID.pc   <= '0;
+    IF_ID.instr<= 32'h00000000;   // or NOP encoding
+  end else begin
+    pc_fetch_q <= pc;             // PC that launched the IMEM read in this cycle
+
+    // Next cycle imem_data corresponds to last cycle's pc_fetch_q
+    IF_ID.pc    <= pc_fetch_q;
+    IF_ID.instr <= imem_data;     // DON'T add another instr_q flop
+  end
+end
+  //------------------------END---------------------//
+  ///////////-----------IF-OF Pipeline---------------//
+ ////------------------------------------------------//
+
+	
   assign Cu_opcode = instr[31:27] ;
   
 ///Calculaing the Immediate extensioj bits
