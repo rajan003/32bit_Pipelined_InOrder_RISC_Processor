@@ -58,96 +58,66 @@ module DataPath (
 
 ) ;
   
-  //--------------------------------------------------------------//
-  //-------------Instruction fetch Unit--------------------------//
-  //-------------------------------------------------------------//
+//--------------------------------------------------------------//
+//-------------Instruction fetch Unit--------------------------//
+//-------------------------------------------------------------//
   logic [31:0] instr;
   logic isBranchTaken;
   /// Logic to control the Rpogram Counter register that hold the Next instruction register///
   logic [31:0] pc , pc_nxt;  /// Programme counter value
-  
-   assign  pc_nxt = isBranchTaken ? BranchPC : pc + 32'd4 ; // /// Incrementing by 4 bytes for the next instruction
-  
+  always_comb 
+	begin 
+	   pc_nxt = isBranchTaken ? BranchPC : pc + 32'd4 ; // /// Incrementing by 4 bytes for the next instruction
+	    //---------Instruction SRAM Controls-------------//
+       imem_en= start ; // always available /// if their is address change
+       imem_addr =  pc[INST_ADDR_WIDTH+1 : 2];  // 	•	PC[1:0] → byte offset (always 00) •	PC[2] → selects instruction 1
+       instr = imem_data ; 
+	end
   //// Either PC points to same addrwss to move to Next , Depending on Enable.
   always@(negedge clk, negedge rst)
     if(!rst) pc <= '0;
   else if(start)  pc <= pc_nxt ;
     else pc <= pc ;
 
-    //---------Instruction SRAM Controls-------------//
-    assign imem_en= start ; // always available /// if their is address change
-    assign imem_addr =  pc[INST_ADDR_WIDTH+1 : 2];  // 	•	PC[1:0] → byte offset (always 00) •	PC[2] → selects instruction 1
-    assign instr = imem_data ; 
-  //-------------------------------------------------//
-  ///////////-----------IF-OF Pipeline---------------//
- ////---------------------START----------------------//
-// register the PC/address used for fetch (1-cycle delay)
-logic [31:0] pc_fetch_q;
-ID_ID_t IF_ID ; /// Pipeline Payload Structure
-always_ff @(posedge clk or negedge rst) begin
-  if (!rst) begin
-    pc_fetch_q <= '0;
-    IF_ID.pc   <= '0;
-    IF_ID.instr<= 32'h00000000;   // or NOP encoding
-  end else begin
-    pc_fetch_q <= pc;             // PC that launched the IMEM read in this cycle
-
-    // Next cycle imem_data corresponds to last cycle's pc_fetch_q
-    IF_ID.pc    <= pc_fetch_q;
-    IF_ID.instr <= imem_data;     // DON'T add another instr_q flop
-  end
-end
-  //------------------------END---------------------//
-  ///////////-----------IF-OF Pipeline---------------//
- ////------------------------------------------------//
-
+//=================IF-OF Pipeline===================//
+//======================START=======================//	
+ // register the PC/address used for fetch (1-cycle delay)
+	logic [31:0] pc_fetch_q;
+	If_Of_t If_Of ; /// Pipeline Payload Structure
+	always_ff @(posedge clk or negedge rst) begin
+	  if (!rst) begin
+	    pc_fetch_q <= '0;
+	    If_Of.pc   <= '0;
+	    If_Of.instr<= 32'h00000000;   // or NOP encoding
+	  end else begin
+	    pc_fetch_q <= pc;             // PC that launched the IMEM read in this cycle
 	
-  assign Cu_opcode = instr[31:27] ;
-  
-///Calculaing the Immediate extensioj bits
-logic [31:0] immx;
-always @* begin
-	case (instr[17:16])
-		2'b00: immx = {{16{instr[15]}}, instr[15:0]};   // proper sign-extend
-		2'b01: immx = {16'h0000, instr[15:0]};
-		2'b10: immx = {16'hFFFF, instr[15:0]};
-		default: immx = {16'h0000, instr[15:0]};
-  endcase
-end
-/// Immediate bit to control unit
-  assign Cu_imm = instr[26] ;
-//  always @(posedge clk) begin
-//  if (rst) begin
-//    $display("[%0t] PC=%08h IMEM_ADDR=%0d INSTR=%08h OPCODE=%05b",
-//             $time, pc, imem_addr, instr, instr[31:27]);
-//  end
-//end
+	    // Next cycle imem_data corresponds to last cycle's pc_fetch_q
+	    If_Of.pc    <= pc_fetch_q;
+	    If_Of.instr <= imem_data;     // DON'T add another instr_q flop
+	  end
+	end
+//==================================================//
+
 
 //---------------------------------------------------------//
 //--------------- Decode: Register read and write----------//
 //---------------------------------------------------------//
 // Read Interface Control 
+ assign Cu_opcode = If_Of[31:27] ;
+//=====>>IF Opcode to Control Unit===>Control Signal==//
+	
   logic [3:0] ra_addr ; /// Return Address Register
-  logic [31:0] alu_result;
   logic [3:0] rd_addr1_int, rd_addr2_int ;
-logic [31:0] op1, op2, op2_int ; /// Two Outputs from Register file.
-  
-assign ra_addr = 4'b1111 ; // the 16th regitser in GPR is reserved for storing PC value
-  assign rd_addr1_int = Cu_isRet ? ra_addr : instr[21:18] ; ///  register Read Address Port-1// RA or RS1 always
-  assign rd_addr2_int = Cu_isSt ? instr[25:22] : instr[17:14] ; /// Store instructure= RD , rest are Rs2 
+  logic [31:0] op1, op2, op2_int ; /// Two Outputs from Register file.
 
-/// Write interface controls and data//
-  logic [3:0] wr_addr_int;
-  logic [31:0] wr_data_int;
-always@* begin 
-	wr_addr_int = Cu_isCall ? ra_addr : instr[25:22] ; ///  Ra register addresss or Rd Register from Instruction 
-  case({Cu_isCall, Cu_isLd}) 
-    2'b00: wr_data_int = alu_result;  /// ALU result is saved here 
-    2'b01: wr_data_int = IdResult ; /// Memory read reesult //Load instruction 
-    2'b10: wr_data_int = pc + 4 ; ///Next address for PC i.e PC+ 4 Bytes 
-      default: wr_data_int = alu_result;
-  endcase
-end 
+  always@* begin 
+       ra_addr = 4'b1111 ; // the 16th regitser in GPR is reserved for storing PC value
+  	   rd_addr1_int = Cu_isRet ? ra_addr : instr[21:18] ; ///  register Read Address Port-1// RA or RS1 always
+  	   rd_addr2_int = Cu_isSt ? instr[25:22] : instr[17:14] ; /// Store instructure= RD , rest are Rs2 
+  end 
+
+
 
   reg2r1w #(.WIDTH(32), .DEPTH(16) ) rf_inst (     /// 16 * 32  REGister Space
   .clk(clk), 
@@ -164,7 +134,36 @@ end
   .rd_addr2(rd_addr2_int),
   .rd_data2(op2_int)
 );
-  
+//
+/// Write interface controls and data//
+  logic [3:0] wr_addr_int;
+  logic [31:0] wr_data_int;
+
+always@* begin 
+	wr_addr_int = Cu_isCall ? ra_addr : instr[25:22] ; ///  Ra register addresss or Rd Register from Instruction 
+  case({Cu_isCall, Cu_isLd}) 
+    2'b00: wr_data_int = alu_result;  /// ALU result is saved here 
+    2'b01: wr_data_int = IdResult ; /// Memory read reesult //Load instruction 
+    2'b10: wr_data_int = pc + 4 ; ///Next address for PC i.e PC+ 4 Bytes 
+      default: wr_data_int = alu_result;
+  endcase
+end 
+
+	
+///Calculaing the Immediate extensioj bits
+	logic [31:0] immx;
+	always @* begin
+		case (instr[17:16])
+			2'b00: immx = {{16{instr[15]}}, instr[15:0]};   // proper sign-extend
+			2'b01: immx = {16'h0000, instr[15:0]};
+			2'b10: immx = {16'hFFFF, instr[15:0]};
+			default: immx = {16'h0000, instr[15:0]};
+	  endcase
+	end
+	/// Immediate bit to control unit
+		assign Cu_imm = instr[26] ;
+	
+	
  /// Register write Observation port to testebench//
   always_comb begin 
 	 rf_wr_addr = wr_addr_int;
@@ -174,13 +173,30 @@ end
   
 //------ Operand Generation for ALU----//
   // Format     Defition
-  // branch     register op (28-32) offset (1-27) op )  
-  // register   op (28-32) I (27) rd (23-26) rs1 (19-22) rs2 (15-18
-  // immediate  op (28-32) I (27) rd (23-26) rs1 (19-22) imm (1-18)
+	// branch     register op (27-31) offset (1-27) op )  
+	// register   op (27-31) I (26) rd (22-25) rs1 (18-21) rs2 (14-17)
+	// immediate  op (27-31) I (26) rd (22-25) rs1 (18-21) imm (0-17)
   // op-> opcode, offset-> branch offset,  I-> immediate bit, rd -> destinaton register, rs1 -> source register 1, rs2 -> source register 2, imm -> immediate operand
-
- /// Operand one comes from 
-
+	
+//=================OF-EX Pipeline===================//
+//======================START=======================//	
+ // register the PC/address used for fetch (1-cycle delay)
+	logic [31:0] pc_fetch_q;
+	Of_Ex_t Of_Ex ; /// Pipeline Payload Structure
+	always_ff @(posedge clk or negedge rst) begin
+	  if (!rst) begin
+	    pc_fetch_q <= '0;
+	    IF_ID.pc   <= '0;
+	    IF_ID.instr<= 32'h00000000;   // or NOP encoding
+	  end else begin
+	    pc_fetch_q <= pc;             // PC that launched the IMEM read in this cycle
+	
+	    // Next cycle imem_data corresponds to last cycle's pc_fetch_q
+	    IF_ID.pc    <= pc_fetch_q;
+	    IF_ID.instr <= imem_data;     // DON'T add another instr_q flop
+	  end
+	end
+//======================END=======================//	
 
 
 //-------------------------------------------//
@@ -278,7 +294,7 @@ always_comb begin
   aluSignal.isNot = Cu_isNot;
   aluSignal.isMov = Cu_isMov;
 end
-  
+    logic [31:0] alu_result;
   ALU  alu_unit (
    .aluSignal(aluSignal) , //isAdd, isSub, isCmp, isMul, isDiv, isMod, isLsl, isLsr, isAsr, isOr, isAnd, isNot, isMov, //// ALu Signal
   //where 
