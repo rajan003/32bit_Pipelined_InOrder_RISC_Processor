@@ -33,6 +33,24 @@ typedef struct packed {
 } aluctrl_t;
 
 typedef struct packed {
+                  logic imm, /// immediate indication bit
+                  logic [4:0] opcode,
+                ///control signals from control unit ///
+                  logic isSt, /// Store instruction 
+                  logic isLd , // Load instruction 
+                  logic isBeq, // Branch Equivalent
+                  logic isBgt, /// branch Greater than
+                  logic isRet, // Retention signa;l
+                  logic isImmediate, // Immediate bit
+                  logic isWb, /// Memory Write  //Possible in add, sub, mul,div,mod,and, or, not,mov, ld, lsl, lsr, asr, call
+                  logic isUBranch, // Unconditiona Branch Instrcution : b, call, ret
+                  logic isCall , // Call Instruction 
+                // aluctrls///
+                  aluctrl_t   alu_ctrl;
+} ctrl_unit_t ;
+
+
+typedef struct packed {
   logic GT;
   logic ET;
 } flag_t;
@@ -49,6 +67,27 @@ typedef enum logic [1:0] {
 typedef struct packed {
   logic [31:0] pc;
   logic [31:0] instr;
-} IF_ID_t ;
+} If_If_t ;
+
+// --------------------
+// Of-Ex Pipeline Payload
+// --------------------
+typedef struct packed {
+  logic [31:0] pc;
+  logic [31:0] BranchTarget ;
+  logic [31:0] A;
+  logic [31:0] B;
+  logic [31:0] op2;
+  logic [31:0] instr; 
+  ctrl_unit_t ctrl; 
+} Of_Ex_t
+  
+
+
+
+
+
+
+
 
 `endif
