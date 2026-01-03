@@ -33,8 +33,6 @@ typedef struct packed {
 } aluctrl_t;
 
 typedef struct packed {
-                  logic imm, /// immediate indication bit
-                  logic [4:0] opcode,
                 ///control signals from control unit ///
                   logic isSt, /// Store instruction 
                   logic isLd , // Load instruction 
