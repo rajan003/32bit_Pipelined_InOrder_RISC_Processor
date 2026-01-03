@@ -1,6 +1,4 @@
-// Verilog code for RISC Processor 
 // Verilog code for Control Unit 
-///Package Importt/
 `include "cpu_pkg.sv"
 module Control_Unit(
             /// Immediate bit output to Control Unit
@@ -9,30 +7,8 @@ module Control_Unit(
             /// Opcode to control unit
             input logic [4:0] opcode,
                 //input logic clk,
-
-                ///control signals from control unit ///
-                output logic isSt, /// Store instruction 
-                output logic isLd , // Load instruction 
-                output logic isBeq, // Branch Equivalent
-                output logic isBgt, /// branch Greater than
-                output logic isRet, // Retention signa;l
-                output logic isImmediate, // Immediate bit
-                output logic isWb, /// Memory Write  //Possible in add, sub, mul,div,mod,and, or, not,mov, ld, lsl, lsr, asr, call
-                output logic isUBranch, // Unconditiona Branch Instrcution : b, call, ret
-                output logic isCall , // Call Instruction 
-                output logic isAdd, /// add, ld, st
-                output logic isSub, // sub
-                output logic isCmp, // cmp
-                output logic isMul, // mul
-                output logic isDiv, // div
-                output logic isMod, // mod
-                output logic isLsl, // lsl
-                output logic isLsr, // Lsr
-                output logic isAsr, // ASR
-                output logic isOr, // OR
-                output logic isAnd, // AND
-                output logic isNot, // Not
-                output logic isMov // Move
+            ///Control Unit
+            output ctrl_unit_t Cu_out
     );
 
 
