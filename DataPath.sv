@@ -83,7 +83,7 @@ module DataPath (
  ////---------------------START----------------------//
 // register the PC/address used for fetch (1-cycle delay)
 logic [31:0] pc_fetch_q;
-
+ID_ID_t IF_ID ; /// Pipeline Payload Structure
 always_ff @(posedge clk or negedge rst) begin
   if (!rst) begin
     pc_fetch_q <= '0;
