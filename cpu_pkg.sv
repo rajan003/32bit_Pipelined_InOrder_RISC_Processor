@@ -81,7 +81,13 @@ typedef struct packed {
 } Of_Ex_t
   
 
-
+typedef struct packed {
+  logic [31:0] pc;
+  logic [31:0] aluresult;
+  logic [31:0] op2;
+  logic [31:0] instr;
+  ctrl_unit_t ctrl;
+} Ex_Ma_t
 
 
 
