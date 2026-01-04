@@ -95,7 +95,7 @@ typedef struct packed {
   logic [31:0] aluResult;
   logic [31:0] instr;
   ctrl_unit_t ctrl;
-} Ma_Rw_t
+} Ma_Rb_t
 
 
 
