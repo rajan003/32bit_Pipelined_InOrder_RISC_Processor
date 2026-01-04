@@ -89,6 +89,13 @@ typedef struct packed {
   ctrl_unit_t ctrl;
 } Ex_Ma_t
 
+typedef struct packed {
+  logic [31:0] pc;
+  logic [31:0] IdResult;
+  logic [31:0] aluResult;
+  logic [31:0] instr;
+  ctrl_unit_t ctrl;
+} Ma_Rw_t
 
 
 
