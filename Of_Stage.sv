@@ -91,22 +91,7 @@ always_comb begin
   of_ex_d.ctrl         = Cu_Out;      // ctrl_unit_t
 end
 
-// OF/EX pipeline register
-  pipe #(.WIDTH(32*6) u_of_ex (
-  .clk      (Clk),
-  .rst_n    (Rst),
-  .en       (Start),        // your start/enable
-  .stall    ('0),   // hook later (0 for now)
-  .flush    ('0),   // hook later (0 for now)
-  .of_ex_d  (of_ex_d),
-  .of_ex_q  (Of_Payld_o),
-  .valid_q  (Of_Valid_o)
-);
 
-// Build IF/ID input packet (aligned)
-assign if_payld_nxt.pc    = pc_q;
-assign if_payld_nxt.instr = Imem_Data;
-	
 ///==========TO-DO//Feature// IF Flush==============//  
   logic flush_of;
   assign flush_of='0; /// Currently feature is not dialed in
@@ -124,8 +109,8 @@ assign if_payld_nxt.instr = Imem_Data;
   .clk(Clk), 
   .rst_n(Rst),
   //source
-  .valid_d(Start), /// Pipe is pushed with Start 
-  .data_d(if_payld_nxt), 
+	 .valid_d(If_Valid_i), /// Pipe is pushed with Start 
+	 .data_d(of_ex_d), 
     .ready_d(If_ready_o),
   //Dest   
    .valid_q(Of_Valid_o), /// Goes to Ex stage  
