@@ -3,7 +3,7 @@
 module Of_Stage (
                 input logic Clk,
   				input logic Rst,
-				input logic Start,
+				//input logic Start,
 			//IF Stage Output
 				input If_Of_t If_Payld_i,
 				input logic If_Valid_i,
@@ -76,7 +76,7 @@ module Of_Stage (
 
 	
 //===============OF Pipeline==========================//
-Of_Ex_t of_ex_d, of_ex_q; /// OF pipeline Payload 
+Of_Ex_t of_ex_d; /// OF pipeline Payload 
 
 // OF stage (combinational build of packet)
 always_comb begin
@@ -84,33 +84,32 @@ always_comb begin
 
   of_ex_d.pc           = If_Payld_i.pc;       // whatever your OF input PC is
   of_ex_d.instr        = If_Payld_i.instr;       // instruction in OF
-  of_ex_d.BranchPC     = BranchPC;
   of_ex_d.A            = op1;
   of_ex_d.B            = op2;
   of_ex_d.op2          = op2_int;      // imm/reg selected
   of_ex_d.ctrl         = Cu_Out;      // ctrl_unit_t
 end
 
-
+	
 ///==========TO-DO//Feature// IF Flush==============//  
   logic flush_of;
   assign flush_of='0; /// Currently feature is not dialed in
   
 //===========TO-DO//Feature// Stall==================//
 //  Pipeline will accept only if not Stalled
-  logic Of_ready_q;
+  logic Of_Ready_q;
   logic stall_of ;
          
   assign stall_of = 1'b0;
-  assign Of_Ready_q = Of_ready_i && !stall_of ;
+  assign Of_Ready_q = Of_Ready_i && !stall_of ;
   
   
  pipe #(.T(Of_Ex_t)) u_pipe_of (
   .clk(Clk), 
   .rst_n(Rst),
   //source
-	 .valid_d(If_Valid_i), /// Pipe is pushed with Start 
-	 .data_d(of_ex_d), 
+  .valid_d(If_Valid_i), /// Pipe is pushed with Start 
+  .data_d(of_ex_d), 
     .ready_d(If_ready_o),
   //Dest   
    .valid_q(Of_Valid_o), /// Goes to Ex stage  
