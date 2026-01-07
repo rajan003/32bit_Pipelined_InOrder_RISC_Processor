@@ -5,18 +5,20 @@ module Ex_Stage (
                 input logic Clk,
   				input logic Rst,
   
-  				input logic Start,
-  		  //Of Stage Output
-			  	output Of_Ex_t Of_Payld,
-  				output logic Of_Valid,
+  		//input logic Start,
+  		//Of Stage Output
+			  	input Of_Ex_t Of_Payld_i,
+  				input logic Of_Valid_i,
+				output logic Of_Ready_o,
 
        //Ex Stage Output
-			  	output Ex_Ma_t Ex_Payld,
-  				output logic Ex_Valid,  
+			  	output Ex_Ma_t Ex_Payld_o,
+  				output logic Ex_Valid_o, 
+				input logic Ex_Ready_i,
 
 	   ///Branch Control To IF Stage
-	            output logic IsBranchTaken,
-	            output logic [31:0] BranchPC
+	            output logic IsBranchTaken_o,
+	output logic [31:0] BranchPC_o
 ) ;
 
 	
@@ -28,9 +30,11 @@ flag_t flags, flags_q;
 /// type-1 branch inst: Unconditional Brnahc ( b , call, ret )
 /// type-2, Conditional branch : beq, bne >> they depend on Last instrcution (CMP) result i.e flag 
  always@* begin 
-	 isBranchTaken = Of_Payld.ctrl.isUBranch | (Of_Payld.ctrl.isBgt & flags_q.GT) | (Of_Payld.ctrl.isBeq & flags_q.ET) ;  /// (Type-1 OR Type-2) 
- 
-     BranchPC = Of_Payld.BranchPC ; //  BranchPC is already calculated in OF stage 
+	 isBranchTaken_o = '0;
+	 BranchPC_o = '0;
+	 if(Of_Valid_i==1'b1) begin 
+		 isBranchTaken_o = Of_Payld_i.ctrl.isUBranch | (Of_Payld_i.ctrl.isBgt & flags_q.GT) | (Of_Payld_i.ctrl.isBeq & flags_q.ET) ;  /// (Type-1 OR Type-2) 
+         BranchPC_o = Of_Payld_i.BranchPC ; //  BranchPC is already calculated in OF stage 
  end 
   
 
@@ -41,9 +45,9 @@ aluctrl_t aluSignal ; /// ALU control signals
 logic [31:0] op1,op2;
 logic [31:0] alu_result;
 always_comb begin 
-	op1 = Of_Payld.op1;
-	op2=  Of_Payld.op2;
-	aluSignal = Of_Payld.ctrl.alu_ctrl
+	op1 = Of_Payld_i.A;
+	op2=  Of_Payld_i.B;
+	aluSignal = Of_Payld_i.ctrl.alu_ctrl
 end 
   
 ALU  alu_unit (
@@ -75,38 +79,47 @@ ALU  alu_unit (
 );
  always@(posedeg Clk, negesge Rst)
 	if(!Rst) flag_q <= '0;
-	else if(Of_Valid && start) flag_q <= flag;
+	 else if(Of_Valid_i) flag_q <= flag;
 
 //EX Payld 
 Ex_Ma_t ex_ma_d;
-
-// Valid bit
-logic ex_ma_valid;
-// Control
-//logic stall_exma;
-//logic flush_exma;
 	
 always_comb begin
   ex_ma_d = '0;
 
-  ex_ma_d.pc         = Of_Payld.pc;        // PC of instruction
+  ex_ma_d.pc         = Of_Payld_i.pc;        // PC of instruction
   ex_ma_d.aluresult  = alu_result;        // ALU output
-  ex_ma_d.op2        = Of_Payld.op2;        // store data (rs2)
-  ex_ma_d.instr      = Of_Payld.instr;      // instruction bits
-  ex_ma_d.ctrl       = Of_Payld.ctrl;       // control bundle
+  ex_ma_d.op2        = Of_Payld_i.op2;        // store data (rs2)
+  ex_ma_d.instr      = Of_Payld_i.instr;      // instruction bits
+  ex_ma_d.ctrl       = Of_Payld_i.ctrl;       // control bundle
 end
 	
-pipe #(.WIDTH(32*5)) u_pipe_ma (
-  .clk      (Clk),
-  .rst_n    (Rst),
-
-  .en       (start),        // global pipeline enable
-  .stall    (1'b0),   // usually 0 initially
-  .flush    (1'b0),   // asserted on branch taken
-
-  .ex_ma_d  (ex_ma_d),      // from EX stage (combinational)
-  .ex_ma_q  (Ex_Payld),      // into MA stage (registered)
-  .valid_q  (Ex_valid)   // tells MA if this is a real instruction
+///==========TO-DO//Feature// IF Flush==============//  
+  logic flush_ex;
+  assign flush_ex='0; /// Currently feature is not dialed in
+  
+//===========TO-DO//Feature// Stall==================//
+//  Pipeline will accept only if not Stalled
+  logic Ex_Ready_q;
+  logic stall_ex ;
+         
+  assign stall_of = 1'b0;
+  assign Ex_Ready_q = Ex_Ready_i && !stall_ex ;
+  
+  
+ pipe #(.T(Of_Ex_t)) u_pipe_of (
+  .clk(Clk), 
+  .rst_n(Rst),
+  //source
+   .valid_d(Of_Valid_i), /// Pipe is pushed with Start 
+   .data_d(ex_ma_d), 
+   .ready_d(Of_Ready_o),
+  //Dest   
+	 .valid_q(Ex_Valid_o), /// Goes to Ex stage  
+	 .data_q(Ex_Payld_o),  // Goes to EX stage
+	 .ready_q(Ex_Ready_q),
+    
+   .flush(flush_of)
 );
-
+  
 endmodule 
