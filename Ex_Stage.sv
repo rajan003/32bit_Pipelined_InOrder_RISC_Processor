@@ -3,7 +3,7 @@
 `include "cpu_pkg.sv"
 module Ex_Stage (
                 input logic Clk,
-  				input logic Rst,
+  				input logic Rst_n,
   
   		//input logic Start,
   		//Of Stage Output
@@ -79,8 +79,8 @@ ALU  alu_unit (
                     // logic ET ;
   // } flg;
 );
-	always@(posedeg Clk, negedge Rst)
-	 if(!Rst) flags_q <= '0;
+	always@(posedeg Clk, negedge Rst_n)
+	 if(!Rst_n) flags_q <= '0;
 	else if(Of_Valid_i && Of_Ready_o && && Of_Payld_i.ctrl.isCmp) 
 		flags_q <= flags;
 
@@ -112,7 +112,7 @@ end
   
 pipe #(.T(Ex_Ma_t)) u_pipe_of (
  .clk(Clk), 
- .rst_n(Rst),
+ .rst_n(Rst_n),
   //source
  .valid_d(Of_Valid_i), /// Pipe is pushed with Start 
  .data_d(ex_ma_d), 
