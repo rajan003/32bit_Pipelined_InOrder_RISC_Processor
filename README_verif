@@ -1,0 +1,62 @@
+# 16Bit_RISC_Processor — Testbase (SystemVerilog)
+
+This directory contains a generic SystemVerilog testbase to run assembled programs on the 32-bit RISC CPU.
+
+Files:
+- `imem_model.sv` — simple instruction memory model (64K x 16).
+- `dmem_model.sv` — simple data memory model (64K x 16).
+- `monitor_scoreboard.sv` — lightweight monitor that logs activity and provides simple register checking capabilities.
+- `tb.sv` — top-level testbench that instantiates the models and provides tasks for loading programs and running tests.
+
+How to use:
+1. Connect your DUT . See the commented example in `tb.sv`. 
+2. Create a hex file with your program (`tests/program.hex`). Each line should contain a 16-bit instruction in hex, e.g.:
+   ```
+   0001
+   10FF
+   FFFF
+   ```
+   (Format and encoding depend on your CPU ISA; use assembler or hex dumper for correct format.)
+3. Run the simulation. 
+     
+Extending tests:
+- Add additional task-based testcases in `tb.sv` or create a small test runner that calls load_program_from_file() for different programs and checks expected state using the monitor scoreboard or dmem.read_word().
+
+Notes:
+- The harness is intentionally generic. Your DUT might expose more/less signals (e.g., separate instruction/data buses, memory handshake signals, or internal regfile ports). Adapt the interface and mappings to match the DUT.
+- If your DUT does not export register-write signals, you can still validate behavior by inspecting data memory, I/O, or exposing internal signals via additional ports in your DUT.
+  
+  
+ ISA RECAP:
+4c400005: MOV, I=1, RD=0001, RS1=ignore, imm=5
+          → mov r1, #5
+  
+4c800003: MOV, I=1, RD=0010, RS1=ignore, imm=3
+          → mov r2, #3
+  
+00c48000: ADD, I=0, RD=0011, RS1=0001, RS2=0010
+          → add r3, r1, r2        ; r3 = 5 + 3 = 8
+  
+7cc00000: ST,  I=0, RS2=0011, RS1=0000, offset=0
+          → st r3, 0[r0]          ; MEM[0] = r3
+  
+75000000: LD,  I=0, RD=0100, RS1=0000, offset=0
+          → ld r4, 0[r0]          ; r4 = MEM[0]
+  
+2c100008: CMP, I=1, RS1=0100, imm=8
+          → cmp r4, #8            ; sets ET flag if equal
+            
+80000030: BEQ, offset=48
+          → beq +12               ; if ET=1, skip next instruction
+            
+4d40dead: MOV, I=1, RD=0101, imm=0xDEAD
+          → mov r5, #0xDEAD       ; executed if NOT equal
+            
+90000020: B, offset=32
+          → b +8                  ; jump to end
+  
+4d40beef: MOV, I=1, RD=0101, imm=0xBEEF
+          → mov r5, #0xBEEF       ; executed if equal
+            
+90000000: B, offset=0
+          → b 0                   ; infinite loop (HALT)
