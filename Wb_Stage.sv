@@ -1,47 +1,55 @@
-///Package Importt/
 `include "cpu_pkg.sv"
-module Wb_stage (
-  			 input logic Start,
-           //MA Interface
-          //Rb stage interface
-	         input Ma_Wb_t Ma_Payld,
-	         input logic Ma_Valid,
 
-         // GPR wr interface
-              output logic rf_wr_en,
-              output [3:0] rf_wr_addr;
-              output [31:0] rf_wr_data
+module Wb_Stage (
+  input  logic    Clk,
+  input  logic    Rst_n,
 
-) ;
-  
+  // MA->WB interface (vld/rdy/payload)
+  input  logic    Ma_Valid_i,
+  output logic    Ma_Ready_o,
+  input  Ma_Wb_t  Ma_Payld_i,
 
-//---------------------------------------------------------//
-//--------------- Decode: Register read and write----------//
-//---------------------------------------------------------//
-/// Write interface controls and data//
-  logic [3:0] wr_addr_int;
+  // Register file write port
+  output logic        rf_wr_en,
+  output logic [3:0]  rf_wr_addr,
+  output logic [31:0] rf_wr_data
+);
+
+  // WB is a sink: always ready (no backpressure from RF write)
+  //TO-DO/// This need to be improved for REG write Delay
+  assign Ma_Ready_o = 1'b1;
+
+  // Decode writeback fields (combinational)
+  logic [3:0]  ra_addr;
+  logic [3:0]  wr_addr_int;
   logic [31:0] wr_data_int;
-always@* begin 
-    ra_addr = 4'b1111; /// Fixed to 15th location for RA
-	wr_addr_int = Ma_Payld.ctrl.isCall ? ra_addr : Ma_Payld.instr[25:22] ; ///  Ra register addresss or Rd Register from Instruction 
-  case({Ma_Payld.ctrl.isCall, Ma_Payld.ctrl.isLd}) 
-    2'b00: wr_data_int = Ma_Payld.alu_result;  /// ALU result is saved here 
-    2'b01: wr_data_int = Ma_Payld.ld_load ; /// Memory read reesult //Load instruction 
-    2'b10: wr_data_int = Ma_Payld.pc + 4 ; ///Next address for PC i.e PC+ 4 Bytes 
-      default: wr_data_int = Ma_Payld.alu_result;
-  endcase
-end 
 
- /// Register write Observation port to testebench//
-  always_comb begin 
-	  rf_wr_addr ='0;
-	  rf_wr_data = '0;
-	  rf_wr_en = '0;
-	  if(Ma_valid && Start) begin 
-	 	rf_wr_addr = wr_addr_int;
-		rf_wr_data = wr_data_int;
-		rf_wr_en =  Ma_Payld.ctrl.isWb; /// blocking with start 
-	  end 
-  end 
+  always_comb begin
+    ra_addr    = 4'hF;         // RA fixed reg (r15)
+    wr_addr_int = Ma_Payld_i.ctrl.isCall ? ra_addr : Ma_Payld_i.instr[25:22];
 
-endmodule 
+    // Select WB data
+    unique case ({Ma_Payld_i.ctrl.isCall, Ma_Payld_i.ctrl.isLd})
+      2'b00: wr_data_int = Ma_Payld_i.aluresult;
+      2'b01: wr_data_int = Ma_Payld_i.ld_data;
+      2'b10: wr_data_int = Ma_Payld_i.pc + 32'd4;
+      default: wr_data_int = Ma_Payld_i.aluresult;
+    endcase
+  end
+
+  // Fire RF write only on handshake
+  wire wb_fire = Ma_Valid_i && Ma_Ready_o;
+
+  always_ff @(posedge Clk or negedge Rst_n) begin
+    if (!Rst_n) begin
+      rf_wr_en   <= 1'b0;
+      rf_wr_addr <= '0;
+      rf_wr_data <= '0;
+    end else begin
+      rf_wr_en   <= wb_fire && Ma_Payld_i.ctrl.isWb;
+      rf_wr_addr <= wr_addr_int;
+      rf_wr_data <= wr_data_int;
+    end
+  end
+
+endmodule
