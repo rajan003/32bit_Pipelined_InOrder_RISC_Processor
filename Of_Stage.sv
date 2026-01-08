@@ -47,7 +47,7 @@ module Of_Stage (
 	    Rd_Addr2='0;
 	    Cu_Opcode = '0 ;
 	    Cu_Imm = '0;
-	  if(If_Valid_i) begin 
+	  if(If_Valid_i && If_ready_o) begin 
 	      Ra_Addr = 4'b1111 ; // the 16th regitser in GPR is reserved for storing PC value
 		  Cu_Imm = If_Payld_i.instr[26]; /// Immediate Bit from the instruction 
 		  Cu_Opcode = If_Payld_i.instr[31:27] ; /// Opcode for the Control Unit// //=====>>IF Opcode to Control Unit===>Control Signal==//
@@ -70,7 +70,7 @@ module Of_Stage (
 	always_comb
 		begin 
 		 op1 = Rd_Data1;
-		 op2_int = Rd_Data1;
+		 op2_int = Rd_Data2;
 		 op2 = Cu_Out.isImmediate ? immx : op2_int; /// Is Instruction is immediate than Immediate Value otherwise it's an register Instrcution(rs2)
 		end 
 
