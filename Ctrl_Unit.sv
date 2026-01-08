@@ -1,145 +1,105 @@
-// Verilog code for Control Unit 
+// Verilog/SystemVerilog code for Control Unit
 `include "cpu_pkg.sv"
-module Control_Unit(
-            /// Immediate bit output to Control Unit
-                input logic imm, /// immediate indication bit
 
-            /// Opcode to control unit
-            input logic [4:0] opcode,
-                //input logic clk,
-            ///Control Unit
-            output ctrl_unit_t Cu_out
-    );
+module Control_Unit (
+  input  logic      imm,     // immediate indicator bit (from instr[26])
+  input  logic [4:0] opcode,  // instr[31:27]
+  output ctrl_unit_t Cu_out
+);
 
+  always_comb begin
+    // Default everything to 0
+    Cu_out = '0;
+    // Always reflect immediate bit
+    Cu_out.isImmediate = imm;
+    case (opcode)
+      5'b00000: begin // ADD
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isAdd  = 1'b1;
+      end
+      5'b00001: begin // SUB
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isSub  = 1'b1;
+      end
+      5'b00010: begin // MUL
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isMul  = 1'b1;
+      end
+      5'b00011: begin // DIV
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isDiv  = 1'b1;
+      end
+      5'b00100: begin // MOD
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isMod  = 1'b1;
+      end
+      5'b00101: begin // CMP
+        // no WB; just update flags in ALU
+        Cu_out.alu_ctrl.isCmp  = 1'b1;
+      end
+      5'b00110: begin // AND
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isAnd  = 1'b1;
+      end
+      5'b00111: begin // OR
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isOr   = 1'b1;
+      end
+      5'b01000: begin // NOT
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isNot  = 1'b1;
+      end
+      5'b01001: begin // MOV
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isMov  = 1'b1;
+      end
+      5'b01010: begin // LSL
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isLsl  = 1'b1;
+      end
+      5'b01011: begin // LSR
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isLsr  = 1'b1;
+      end
+      5'b01100: begin // ASR
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isAsr  = 1'b1;
+      end
+      5'b01101: begin // NOP
+        // all zeros
+      end
+      5'b01110: begin // LD
+        Cu_out.isLd            = 1'b1;
+        Cu_out.isWb            = 1'b1;
+        Cu_out.alu_ctrl.isAdd  = 1'b1; // address calc (base + offset/imm)
+      end
+      5'b01111: begin // ST
+        Cu_out.isSt            = 1'b1;
+        Cu_out.alu_ctrl.isAdd  = 1'b1; // address calc
+      end
+      5'b10000: begin // BEQ
+        Cu_out.isBeq           = 1'b1;
+      end
+      5'b10001: begin // BGT
+        Cu_out.isBgt           = 1'b1;
+      end
+      5'b10010: begin // B (unconditional)
+        Cu_out.isUBranch       = 1'b1;
+      end
+      5'b10011: begin // CALL
+        Cu_out.isUBranch       = 1'b1;
+        Cu_out.isCall          = 1'b1;
+        Cu_out.isWb            = 1'b1; // write RA in WB stage
+      end
+      5'b10100: begin // RET
+        Cu_out.isUBranch       = 1'b1;
+        Cu_out.isRet           = 1'b1;
+      end
 
-always @(*)
-begin
- isSt= '0;  
- isLd = '0; 
- isBeq= '0; 
- isBgt= '0; 
- isRet= '0; 
- isImmediate=imm; /// Immediate bit is set if Instruction has immediate set 
- isWb='0; 
- isUBranch='0; 
- isCall ='0;  
- isAdd='0; 
- isSub='0; 
- isCmp='0; 
- isMul='0; 
- isDiv='0; 
- isMod='0; 
- isLsl='0; 
- isLsr='0; 
- isAsr='0; 
- isOr='0; 
- isAnd='0; 
- isNot='0; 
- isMov='0; 
- case(opcode) 
-5'b00000:  // ADD (register or Immediate)
-         begin
-          isAdd=1'b1 ; 
-          isWb=1'b1 ;
-         end
- 5'b00001:  // SUB//Subtract
-   begin
-          isSub=1'b1 ; 
-          isWb=1'b1 ;
-   end
- 5'b00010:  // Multplication
-   begin
-          isMul=1'b1 ; 
-          isWb=1'b1 ; 
-   end
- 5'b00011:  // Division
-   begin
-          isDiv=1'b1 ; 
-          isWb=1'b1 ;  
-   end
- 5'b00100:  // MOD
-   begin
-          isMod=1'b1 ; 
-          isWb=1'b1 ;  
-   end
- 5'b00101:  // Comparator
-   begin
-          isCmp=1'b1 ; /// Tellls ALU to compare Only
-   end
- 5'b00110:  // Logical AND
-   begin
-          isAnd=1'b1 ; 
-          isWb=1'b1 ;  
-   end
- 5'b00111:  // OR
-   begin
-          isOr=1'b1 ; 
-          isWb=1'b1 ;   
-   end
- 5'b01000:  // NOT
-   begin
-          isNot=1'b1 ; 
-          isWb=1'b1 ;    
-   end
- 5'b01001:  // Move
-   begin
-          isMov=1'b1 ; 
-          isWb=1'b1 ;
-   end
- 5'b01010:  // LSL
-   begin
-          isLsl=1'b1 ; 
-          isWb=1'b1 ;    
-   end
- 5'b01011:  // LSR
-   begin
-          isLsr=1'b1 ; 
-          isWb=1'b1 ;    
-   end
- 5'b01100:  // ASR
-   begin
-          isAsr=1'b1 ; 
-          isWb=1'b1 ;    
-   end   
- 5'b01101:  // NOP 
-       begin //
-       end 
- 5'b01110:  // LD - Load operation 
-   begin
-          isLd=1'b1 ; 
-          isWb=1'b1 ;  
-         isAdd= 1'b1;
-   end    
-  5'b01111:  // ST - Store operation 
-   begin
-          isSt=1'b1 ; 
-         isAdd= 1'b1;
-   end   
-  5'b10000:  // BEQ - Branch if Equal 
-   begin
-          isBeq=1'b1 ; 
-   end   
- 5'b10001:  // BGT-- Branch if Greater
-   begin
-          isBgt=1'b1 ; 
-   end   
- 5'b10010:  // b -- Branch offset-- unconditional 
-   begin
-          isUBranch=1'b1 ; 
-   end   
-  5'b10011:  // call -- call offset-- unconditional 
-   begin
-          isUBranch=1'b1 ; 
-          isCall = 1'b1;
-         isWb = 1'b1;
-   end  
-   5'b10100:  // ret-- unconditional 
-   begin
-          isUBranch=1'b1 ; 
-          isRet = 1'b1;
-   end  
- endcase
-      
- end
+      default: begin
+        // keep as NOP
+      end
+    endcase
+  end
 
 endmodule
