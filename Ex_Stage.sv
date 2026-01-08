@@ -10,7 +10,6 @@ module Ex_Stage (
 			  	input Of_Ex_t Of_Payld_i,
   				input logic Of_Valid_i,
 				output logic Of_Ready_o,
-
        //Ex Stage Output
 			  	output Ex_Ma_t Ex_Payld_o,
   				output logic Ex_Valid_o, 
@@ -18,7 +17,7 @@ module Ex_Stage (
 
 	   ///Branch Control To IF Stage
 	            output logic IsBranchTaken_o,
-	output logic [31:0] BranchPC_o
+				output logic [31:0] BranchPC_o
 ) ;
 
 	
@@ -32,11 +31,14 @@ flag_t flags, flags_q;
  always@* begin 
 	 isBranchTaken_o = '0;
 	 BranchPC_o = '0;
-	 if(Of_Valid_i==1'b1) begin 
-		 isBranchTaken_o = Of_Payld_i.ctrl.isUBranch | (Of_Payld_i.ctrl.isBgt & flags_q.GT) | (Of_Payld_i.ctrl.isBeq & flags_q.ET) ;  /// (Type-1 OR Type-2) 
+	 if(Of_Valid_i && Of_Ready_o ) begin /// Update Data only when Stage is ready to accept
+		 isBranchTaken_o = Of_Payld_i.ctrl.isUBranch 
+		     | (Of_Payld_i.ctrl.isBgt & flags_q.GT) 
+			 | (Of_Payld_i.ctrl.isBeq & flags_q.ET) ;  /// (Type-1 OR Type-2) 
+		 
          BranchPC_o = Of_Payld_i.BranchPC ; //  BranchPC is already calculated in OF stage 
- end 
-  
+	   end 
+ end
 
 //-----------------------------------------------------------------------------//
 //--------------Type-2 : Execution of non-Branched Instruction--------------------//
@@ -47,7 +49,7 @@ logic [31:0] alu_result;
 always_comb begin 
 	op1 = Of_Payld_i.A;
 	op2=  Of_Payld_i.B;
-	aluSignal = Of_Payld_i.ctrl.alu_ctrl
+	aluSignal = Of_Payld_i.ctrl.alu_ctrl;
 end 
   
 ALU  alu_unit (
@@ -77,9 +79,10 @@ ALU  alu_unit (
                     // logic ET ;
   // } flg;
 );
- always@(posedeg Clk, negesge Rst)
-	if(!Rst) flag_q <= '0;
-	 else if(Of_Valid_i) flag_q <= flag;
+	always@(posedeg Clk, negedge Rst)
+	 if(!Rst) flags_q <= '0;
+	else if(Of_Valid_i && Of_Ready_o && && Of_Payld_i.ctrl.isCmp) 
+		flags_q <= flags;
 
 //EX Payld 
 Ex_Ma_t ex_ma_d;
@@ -103,23 +106,23 @@ end
   logic Ex_Ready_q;
   logic stall_ex ;
          
-  assign stall_of = 1'b0;
+  assign stall_ex = 1'b0;
   assign Ex_Ready_q = Ex_Ready_i && !stall_ex ;
   
   
- pipe #(.T(Of_Ex_t)) u_pipe_of (
-  .clk(Clk), 
-  .rst_n(Rst),
+pipe #(.T(Ex_Ma_t)) u_pipe_of (
+ .clk(Clk), 
+ .rst_n(Rst),
   //source
-   .valid_d(Of_Valid_i), /// Pipe is pushed with Start 
-   .data_d(ex_ma_d), 
-   .ready_d(Of_Ready_o),
+ .valid_d(Of_Valid_i), /// Pipe is pushed with Start 
+ .data_d(ex_ma_d), 
+ .ready_d(Of_Ready_o),
   //Dest   
-	 .valid_q(Ex_Valid_o), /// Goes to Ex stage  
-	 .data_q(Ex_Payld_o),  // Goes to EX stage
-	 .ready_q(Ex_Ready_q),
+ .valid_q(Ex_Valid_o), /// Goes to Ex stage  
+ .data_q(Ex_Payld_o),  // Goes to EX stage
+ .ready_q(Ex_Ready_q),
     
-   .flush(flush_of)
+ .flush(flush_of)
 );
   
 endmodule 
