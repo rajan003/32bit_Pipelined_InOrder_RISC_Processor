@@ -65,7 +65,7 @@ typedef enum logic [1:0] {
 typedef struct packed {
   logic [31:0] pc;
   logic [31:0] instr;
-} If_If_t ;
+} If_Of_t ;
 
 // --------------------
 // Of-Ex Pipeline Payload
@@ -95,7 +95,7 @@ typedef struct packed {
   logic [31:0] aluResult;
   logic [31:0] instr;
   ctrl_unit_t ctrl;
-} Ma_Rb_t
+} Ma_Wb_t
 
 
 
