@@ -1,0 +1,36 @@
+##############################
+####Instruction Format########
+##############################
+Inst | Code |  Format 
+add   00000   add rd, rs1, (rs2/imm) 
+sub   00001   sub rd, rs1, (rs2/imm)
+mul   00010   mul rd, rs1, (rs2/imm)
+div   00011   div rd, rs1, (rs2/imm)
+mod   00100   mod rd, rs1, (rs2/imm)
+cmp   00101   cmp rs1, (rs2/imm)
+and   00110   and rd, rs1, (rs2/imm)
+or    00111   or rd, rs1, (rs2/imm)
+not   01000   not rd, (rs2/imm)
+mov   01001   mov rd, (rs2/imm)
+lsl   01010   lsl rd, rs1, (rs2/imm) 
+Isr   01011   Isr rd, rs1, (rs2/imm)
+asr   01100   asr rd, rs1, (Is2/imm)
+пор   01101   nop
+Id    01110   Id rd, imm(rs1]
+st    01111   st rd, imm|rs1]
+beq   10000   beq offset
+bgt   10001   bgt offset
+b     10010   b offset
+call  10011   call
+ret   10100   ret
+
+##############################
+####Instruction Definition####
+##############################
+Format |   Definition
+branch    op (28-32)  offset(1-27)
+register  op(28-32) I(27) rd(23-26) rs1(19-22) rs2(15-18)
+immediate op(28-32) I(27) rd(23-26) rs1(19-22) imm(1-18)
+op--->opcode , offset--> branch offset , I-->immediate bit, rd--> destination register
+rs1--> source register, rs2--> source register 2,  imm--> immediate operand
+
